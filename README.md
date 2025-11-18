@@ -52,6 +52,10 @@ You'll find:
 
 4. **Set Output Mapping:**
    - File: `events.csv` → Table: `out.c-amplitude.events`
+   - Incremental: ✓ enabled
+   - Primary Key: `event_id`
+
+![Keboola Output Mapping Configuration](public/keboola_01.png)
 
 5. **Run** the component
 
