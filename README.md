@@ -8,7 +8,7 @@ Production-ready Python driver for exporting event data from Amplitude Analytics
 
 ## License
 
-MIT License - See LICENSE file for details
+MIT license - Do whatever you want with this driver. We'd love to hear your ideas for improvements.
 
 ## Features
 
