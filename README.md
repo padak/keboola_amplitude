@@ -83,6 +83,7 @@ You can also use this component to send enriched user properties from Keboola ba
 1. **Prepare Input Table** in Keboola with user properties:
    - Must have: user ID column (e.g., `customer_id`)
    - Columns to map: any custom properties (e.g., `lifetime_value`, `segment`, `churn_risk`)
+   - **Sample CSV:** [user_properties_clv_segments.csv](samples/user_properties_clv_segments.csv)
 
 2. **Set Input Mapping:**
    - Map your table → component input
