@@ -50,6 +50,8 @@ You'll find:
    ```
    > Parameters with `#` are encrypted by Keboola automatically
 
+![Keboola User Parameters Configuration](public/keboola_02.png)
+
 4. **Set Output Mapping:**
    - File: `events.csv` → Table: `out.c-amplitude.events`
    - Incremental: ✓ enabled
