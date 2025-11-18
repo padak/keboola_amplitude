@@ -36,6 +36,8 @@ You'll find:
    - Branch: `main`
    - Filename: `main.py`
 
+![Keboola Git Repository Configuration](public/keboola_00.png)
+
 3. **Set User Parameters:**
    ```json
    {
