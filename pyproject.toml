@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "amplitude-keboola"
+version = "1.0.0"
+description = "Amplitude Analytics driver for Keboola Custom Python"
+requires-python = ">=3.8"
+dependencies = [
+    "python-dotenv>=0.21.0",
+    "requests>=2.28.0,<3.0.0",
+    "urllib3>=1.26.0,<2.0.0",
+]

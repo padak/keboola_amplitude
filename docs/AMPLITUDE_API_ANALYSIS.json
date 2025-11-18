@@ -1,0 +1,585 @@
+{
+  "metadata": {
+    "analysis_date": "2025-11-17",
+    "documentation_source": "https://amplitude.com/docs/apis/analytics",
+    "apis_analyzed": [
+      "HTTP V2 API",
+      "Export API",
+      "User Profile API",
+      "Batch Event Upload API",
+      "Identify API"
+    ],
+    "analysis_completeness": "COMPREHENSIVE",
+    "critical_bugs_prevented": 5
+  },
+  "overview": {
+    "api_type": "REST",
+    "api_name": "Amplitude Analytics APIs",
+    "description": "Amplitude provides multiple REST APIs for event ingestion, user identification, data export, and profile queries",
+    "documentation_url": "https://amplitude.com/docs/apis/analytics"
+  },
+  "apis": {
+    "http_v2_api": {
+      "api_name": "HTTP V2 API",
+      "purpose": "Send event data to Amplitude",
+      "status": "PRIMARY_WRITE_ENDPOINT",
+      "base_url": "https://api2.amplitude.com/2/httpapi",
+      "base_url_eu": "https://api.eu.amplitude.com/2/httpapi",
+      "http_method": "POST",
+      "authentication": {
+        "method": "API Key in Request Body",
+        "header_name": null,
+        "header_format": null,
+        "body_param_name": "api_key",
+        "example_curl": "curl --location --request POST 'https://api2.amplitude.com/2/httpapi' --header 'Content-Type: application/json' --data-raw '{\"api_key\": \"YOUR_API_KEY\", \"events\": [{\"user_id\": \"12345\", \"event_type\": \"watch_tutorial\", \"time\": 1396381378123}]}'",
+        "supports_header_auth": false,
+        "supports_body_auth": true,
+        "supports_multiple": false
+      },
+      "request_format": {
+        "content_type": "application/json",
+        "required_fields": [
+          "api_key",
+          "events"
+        ],
+        "events_array_name": "events",
+        "event_object_structure": {
+          "user_id_or_device_id": "One required, minimum 5 characters",
+          "event_type": "Required string",
+          "time": "Milliseconds since epoch",
+          "event_properties": "Optional object",
+          "user_properties": "Optional object"
+        }
+      },
+      "response_structure": {
+        "success_code": 200,
+        "data_field": null,
+        "wrapper_fields": {
+          "events_ingested": "Count of processed events",
+          "payload_size_bytes": "Request size in bytes",
+          "server_upload_time": "Unix timestamp in milliseconds"
+        },
+        "error_codes": {
+          "400": "Invalid JSON, missing fields, invalid IDs",
+          "413": "Payload exceeds 1MB",
+          "429": "Rate limited (retry after 30 seconds)",
+          "503": "Service unavailable (safe to retry)"
+        }
+      },
+      "rate_limits": {
+        "starter_plan": {
+          "batches_per_second": 100,
+          "max_events_per_second": 1000
+        },
+        "growth_enterprise": {
+          "max_payload_mb": 1,
+          "max_events_per_request": 2000
+        },
+        "general": {
+          "user_property_updates_per_hour_per_user": 1800,
+          "event_throttle_threshold_per_second": 30
+        }
+      },
+      "pagination": {
+        "style": "none",
+        "supported": false
+      },
+      "capabilities": {
+        "read": false,
+        "write": true,
+        "update": false,
+        "delete": false,
+        "batch_operations": true
+      },
+      "important_notes": [
+        "CRITICAL BUG #1: API key is in REQUEST BODY (api_key parameter), NOT in headers",
+        "CRITICAL BUG #2: Content-Type MUST be application/json (do NOT add to session.headers)",
+        "Maximum 1MB payload size",
+        "Support both user_id and device_id (at least one required)",
+        "Event time in MILLISECONDS (not seconds)",
+        "EU endpoint available for residency requirements",
+        "Rate limits per device/user when event count exceeds threshold"
+      ]
+    },
+    "batch_event_upload_api": {
+      "api_name": "Batch Event Upload API",
+      "purpose": "Upload large volumes of event data",
+      "status": "PRIMARY_WRITE_ENDPOINT_V1",
+      "base_url": "https://api2.amplitude.com/batch",
+      "base_url_eu": "https://api.eu.amplitude.com/batch",
+      "http_method": "POST",
+      "authentication": {
+        "method": "API Key in Request Body",
+        "header_name": null,
+        "header_format": null,
+        "body_param_name": "api_key",
+        "example_curl": "curl -X POST https://api2.amplitude.com/batch -H 'Content-Type: application/json' -H 'Accept: */*'",
+        "supports_header_auth": false,
+        "supports_body_auth": true,
+        "supports_multiple": false
+      },
+      "request_format": {
+        "content_type": "application/json",
+        "required_fields": ["api_key", "events"],
+        "events_array_name": "events",
+        "max_payload_mb": 20,
+        "max_events_per_batch": 2000,
+        "event_object_structure": {
+          "user_id_or_device_id": "One required, minimum 5 characters",
+          "event_type": "Required string"
+        }
+      },
+      "response_structure": {
+        "success_code": 200,
+        "wrapper_fields": {
+          "code": "HTTP status code",
+          "events_ingested": "Count of processed events",
+          "payload_size_bytes": "Request size in bytes",
+          "server_upload_time": "Unix timestamp in milliseconds"
+        },
+        "error_codes": {
+          "400": "Validation errors with event indexes",
+          "413": "Payload exceeds 20MB",
+          "429": "Rate throttled"
+        }
+      },
+      "rate_limits": {
+        "max_payload_mb": 20,
+        "max_events_per_batch": 2000,
+        "per_device_user_events_per_second": 1000,
+        "daily_quota_per_device_user": 500000,
+        "period": "24-hour rolling"
+      },
+      "pagination": {
+        "style": "none",
+        "supported": false
+      },
+      "capabilities": {
+        "read": false,
+        "write": true,
+        "update": false,
+        "delete": false,
+        "batch_operations": true
+      },
+      "important_notes": [
+        "API key in REQUEST BODY, not headers",
+        "Maximum 20MB payload (vs 1MB for HTTP V2 API)",
+        "Maximum 2,000 events per batch",
+        "Supports bulk operations",
+        "Better for large-scale ingestion"
+      ]
+    },
+    "identify_api": {
+      "api_name": "Identify API",
+      "purpose": "Update user properties and perform server-side identify operations",
+      "status": "WRITE_ENDPOINT",
+      "base_url": "https://api2.amplitude.com/identify",
+      "base_url_eu": "https://api.eu.amplitude.com/identify",
+      "http_method": "POST",
+      "authentication": {
+        "method": "API Key in Request Body",
+        "header_name": null,
+        "content_type": "application/x-www-form-urlencoded",
+        "body_param_name": "api_key",
+        "example_curl": "curl --location --request POST 'https://api2.amplitude.com/identify' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'api_key=<API-KEY>' --data-urlencode 'identification=[{\"user_id\":\"value\", \"user_properties\":{\"propertyNameToUpdate\":\"newValue\"}}]'",
+        "supports_header_auth": false,
+        "supports_body_auth": true,
+        "supports_multiple": false
+      },
+      "request_format": {
+        "content_type": "application/x-www-form-urlencoded",
+        "required_fields": ["api_key", "identification"],
+        "identification_structure": {
+          "user_id_or_device_id": "At least one required",
+          "user_properties": "Optional, supports operations: $set, $setOnce, $add, $append, $prepend, $unset, $preInsert, $postInsert, $remove",
+          "groups": "Optional",
+          "app_version": "Optional",
+          "platform": "Optional",
+          "device_details": "Optional (carrier, model, version, brand)",
+          "location_data": "Optional (lat, lng, city, region, country, dma)"
+        }
+      },
+      "response_structure": {
+        "success_code": 200,
+        "documented_response_fields": "Not fully documented in API spec",
+        "error_codes": {
+          "400": "Bad Request (missing or incorrectly formatted identification)",
+          "414": "URL character limit exceeded",
+          "429": "Rate throttled (pause 15 seconds before retry)"
+        }
+      },
+      "rate_limits": {
+        "per_user_property_updates_per_hour": 1800,
+        "retry_pause_seconds": 15
+      },
+      "pagination": {
+        "style": "none",
+        "supported": false
+      },
+      "capabilities": {
+        "read": false,
+        "write": true,
+        "update": true,
+        "delete": false,
+        "batch_operations": false
+      },
+      "important_notes": [
+        "API key in REQUEST BODY as form parameter",
+        "Content-Type MUST be application/x-www-form-urlencoded",
+        "POST is preferred; GET has URL character limitations",
+        "Can update user properties or create identify events",
+        "Supports advanced property operations ($set, $add, etc.)",
+        "Rate limit: 1800 per hour per user"
+      ]
+    },
+    "export_api": {
+      "api_name": "Export API",
+      "purpose": "Export raw event data from Amplitude",
+      "status": "PRIMARY_READ_ENDPOINT",
+      "base_url": "https://amplitude.com/api/2/export",
+      "base_url_eu": "https://analytics.eu.amplitude.com/api/2/export",
+      "http_method": "GET",
+      "authentication": {
+        "method": "Basic HTTP Authentication",
+        "header_name": "Authorization",
+        "header_format": "Basic {base64-encoded-credentials}",
+        "credentials_format": "{api_key}:{secret_key}",
+        "example_curl": "curl --location --request GET 'https://amplitude.com/api/2/export?start=20220101T00&end=20220127T00' -u '{api_key}:{secret_key}'",
+        "example_header": "Authorization: Basic YWhhbWwsdG9uQGFwaWdlZS5jb206bClwYXNzdzByZAo",
+        "supports_header_auth": true,
+        "supports_body_auth": false,
+        "supports_multiple": false,
+        "curl_u_flag": "Automatically creates Authorization header"
+      },
+      "request_format": {
+        "query_parameters": {
+          "start": {
+            "required": true,
+            "format": "YYYYMMDDTHH",
+            "description": "First hour included",
+            "example": "20220201T05"
+          },
+          "end": {
+            "required": true,
+            "format": "YYYYMMDDTHH",
+            "description": "Last hour included",
+            "example": "20220201T05"
+          }
+        }
+      },
+      "response_structure": {
+        "format": "Zipped archive of JSON files",
+        "structure": "One event object per line",
+        "fields": [
+          "server_received_time",
+          "event_time",
+          "processed_time",
+          "client_upload_time",
+          "server_upload_time",
+          "client_event_time",
+          "app",
+          "amplitude_id",
+          "event_id",
+          "session_id",
+          "device_carrier",
+          "city",
+          "user_id",
+          "uuid",
+          "platform",
+          "os_version",
+          "version_name",
+          "ip_address",
+          "device_type",
+          "location_lng",
+          "location_lat",
+          "os_name",
+          "device_id",
+          "language",
+          "country",
+          "region",
+          "device_family",
+          "paying",
+          "sample_rate",
+          "group_properties",
+          "user_properties",
+          "groups",
+          "event_properties",
+          "data",
+          "event_type",
+          "library",
+          "amplitude_attribution_ids",
+          "start_version",
+          "$insert_id",
+          "dma"
+        ]
+      },
+      "rate_limits": {
+        "max_export_size_gb": 4,
+        "note": "4GB maximum export size per request"
+      },
+      "pagination": {
+        "style": "none",
+        "supported": false,
+        "note": "No pagination; time-range based extraction"
+      },
+      "capabilities": {
+        "read": true,
+        "write": false,
+        "update": false,
+        "delete": false,
+        "batch_operations": false
+      },
+      "http_status_codes": {
+        "200": "Success - returns zipped archive",
+        "400": "Exported data exceeds 4GB limit",
+        "404": "No data available for requested time range",
+        "504": "Timeout due to large data volume"
+      },
+      "important_notes": [
+        "CRITICAL BUG #3: Uses Basic Authentication with {api_key}:{secret_key}",
+        "CRITICAL BUG #4: Header name is 'Authorization' with 'Basic' prefix (case-sensitive)",
+        "Response is ZIPPED ARCHIVE of JSON files, not direct JSON",
+        "One event per line within JSON files",
+        "Time-based filtering only (no pagination)",
+        "Maximum 4GB export per request",
+        "Query parameters are case-sensitive: 'start' and 'end' in YYYYMMDDTHH format",
+        "EU endpoint available"
+      ]
+    },
+    "user_profile_api": {
+      "api_name": "User Profile API",
+      "purpose": "Query user profile data, recommendations, cohort membership, and propensities",
+      "status": "PRIMARY_READ_ENDPOINT",
+      "base_url": "https://profile-api.amplitude.com/v1/userprofile",
+      "http_method": "GET",
+      "authentication": {
+        "method": "API Key in Header",
+        "header_name": "Authorization",
+        "header_format": "Api-Key {secret_key}",
+        "example_curl": "curl --location --request GET 'https://profile-api.amplitude.com/v1/userprofile?user_id=12345&get_recs=true&rec_id=98765' --header 'Authorization: Api-Key 1234567890'",
+        "supports_header_auth": true,
+        "supports_body_auth": false,
+        "supports_multiple": false,
+        "critical_note": "Header format is 'Api-Key' (not 'Bearer'), case-sensitive"
+      },
+      "request_format": {
+        "query_parameters": {
+          "user_id": {
+            "required": "optional_with_device_id",
+            "description": "Amplitude user ID"
+          },
+          "device_id": {
+            "required": "optional_with_user_id",
+            "description": "Device ID (if no user_id)"
+          },
+          "get_recs": {
+            "type": "boolean",
+            "description": "Include recommendations"
+          },
+          "rec_id": {
+            "type": "string",
+            "description": "Specific recommendation ID"
+          },
+          "rec_type": {
+            "type": "string",
+            "description": "Recommendation type"
+          },
+          "get_amp_props": {
+            "type": "boolean",
+            "description": "Include Amplitude user properties"
+          },
+          "get_cohort_ids": {
+            "type": "boolean",
+            "description": "Include cohort membership"
+          },
+          "get_computations": {
+            "type": "boolean",
+            "description": "Include computations"
+          },
+          "comp_id": {
+            "type": "string",
+            "description": "Specific computation ID"
+          },
+          "get_propensity": {
+            "type": "boolean",
+            "description": "Include propensity predictions"
+          },
+          "prediction_id": {
+            "type": "string",
+            "description": "Specific prediction ID"
+          },
+          "propensity_type": {
+            "type": "string",
+            "description": "Type of propensity (e.g., 'pct')"
+          }
+        }
+      },
+      "response_structure": {
+        "wrapper_field": "userData",
+        "data_field": "userData",
+        "example_response": {
+          "userData": {
+            "recommendations": [
+              {
+                "rec_id": "98765",
+                "child_rec_id": "98765",
+                "items": ["cookie", "cracker"],
+                "is_control": false,
+                "recommendation_source": "model",
+                "last_updated": 1608670720
+              }
+            ],
+            "user_id": "12345",
+            "device_id": "ffff-ffff-ffff-ffff",
+            "amp_props": {"property_name": "value"},
+            "cohort_ids": ["cohort1", "cohort3"],
+            "propensities": [{"prop": 83, "pred_id": "0x10x", "prop_type": "pct"}]
+          }
+        },
+        "key_response_fields": [
+          "userData",
+          "recommendations",
+          "rec_id",
+          "items",
+          "is_control",
+          "recommendation_source",
+          "last_updated",
+          "user_id",
+          "device_id",
+          "amp_props",
+          "cohort_ids",
+          "propensities",
+          "prop",
+          "pred_id",
+          "prop_type"
+        ]
+      },
+      "rate_limits": {
+        "requests_per_minute": 600,
+        "items_per_request_recommended": 50,
+        "items_per_request_maximum": 100
+      },
+      "pagination": {
+        "style": "none",
+        "supported": false,
+        "note": "Single request per user; no pagination mechanism"
+      },
+      "capabilities": {
+        "read": true,
+        "write": false,
+        "update": false,
+        "delete": false,
+        "batch_operations": false
+      },
+      "http_status_codes": {
+        "200": "Success",
+        "400": "Bad Request",
+        "401": "Unauthorized",
+        "404": "User not found"
+      },
+      "important_notes": [
+        "CRITICAL BUG #5: Header format is 'Api-Key {secret_key}' (NOT 'Bearer' or 'Basic')",
+        "No pagination - single request per user",
+        "Rate limit: 600 requests per minute (10 per second)",
+        "Supports up to 100 items per request",
+        "Query parameters are optional combinations (at least user_id or device_id)",
+        "Response is wrapped in 'userData' object"
+      ]
+    }
+  },
+  "summary": {
+    "total_apis": 5,
+    "read_apis": 2,
+    "write_apis": 3,
+    "authentication_methods": [
+      "Body-based API Key (HTTP V2, Batch Upload, Identify)",
+      "Basic HTTP Authentication (Export API)",
+      "Header-based API Key with 'Api-Key' prefix (User Profile API)"
+    ],
+    "http_methods_used": ["GET", "POST"],
+    "pagination_supported": false,
+    "multi_region_support": true,
+    "content_types": [
+      "application/json",
+      "application/x-www-form-urlencoded"
+    ]
+  },
+  "critical_bugs_prevention": {
+    "bug_1": {
+      "title": "Authentication Header Names Are Different Across APIs",
+      "severity": "CRITICAL",
+      "description": "Amplitude uses THREE different authentication methods across different APIs",
+      "details": [
+        "HTTP V2 API: api_key in REQUEST BODY (NOT header)",
+        "Batch Upload API: api_key in REQUEST BODY (NOT header)",
+        "Identify API: api_key in REQUEST BODY as form parameter (NOT header)",
+        "Export API: Authorization header with 'Basic {base64}' format",
+        "User Profile API: Authorization header with 'Api-Key {secret}' format (NOT 'Bearer')"
+      ],
+      "prevention": "Driver must implement endpoint-specific authentication logic. Cannot use single session header configuration."
+    },
+    "bug_2": {
+      "title": "Content-Type Management",
+      "severity": "CRITICAL",
+      "description": "Different APIs require different Content-Type headers",
+      "details": [
+        "HTTP V2 API: application/json",
+        "Batch Upload API: application/json",
+        "Identify API: application/x-www-form-urlencoded (form encoded, not JSON)",
+        "Export API: GET request (no body, no Content-Type needed)",
+        "User Profile API: GET request (no body, no Content-Type needed)"
+      ],
+      "prevention": "Must NOT set Content-Type in session headers. Set per-request based on endpoint and method."
+    },
+    "bug_3": {
+      "title": "API Key Authentication in Request Body vs Headers",
+      "severity": "CRITICAL",
+      "description": "Most APIs use body-based authentication, not header-based",
+      "details": [
+        "Body-based (HTTP V2, Batch, Identify): api_key parameter in request body/form",
+        "Header-based (Export, User Profile): Authorization header",
+        "This is opposite of most REST APIs which use headers"
+      ],
+      "prevention": "Check API type before building request. Implement endpoint-specific authentication."
+    },
+    "bug_4": {
+      "title": "Response Structure Has No Pagination",
+      "severity": "MEDIUM",
+      "description": "Amplitude APIs do not support pagination in the traditional sense",
+      "details": [
+        "All 5 APIs have NO pagination mechanism",
+        "Write APIs (HTTP V2, Batch, Identify): No pagination needed",
+        "Export API: Time-range based extraction, no pagination",
+        "User Profile API: Single request per user, no pagination"
+      ],
+      "prevention": "Driver capabilities should set pagination to PaginationStyle.NONE"
+    },
+    "bug_5": {
+      "title": "API-Specific Rate Limits and Constraints",
+      "severity": "MEDIUM",
+      "description": "Different rate limits and payload sizes per API",
+      "details": [
+        "HTTP V2 API: 1MB max payload, 2000 events max",
+        "Batch Upload API: 20MB max payload, 2000 events max",
+        "Identify API: 1800 user property updates per hour per user",
+        "Export API: 4GB max export size",
+        "User Profile API: 600 requests per minute"
+      ],
+      "prevention": "Implement per-API rate limit checking and validation"
+    }
+  },
+  "implementation_guidance": {
+    "driver_structure": "Multi-endpoint driver",
+    "recommended_approach": "Create separate driver classes for read (Export, User Profile) and write (HTTP V2, Batch, Identify) operations, or single driver with endpoint-specific logic",
+    "authentication_strategy": "Cannot use single session.headers approach. Must implement per-endpoint authentication.",
+    "response_parsing": "Export API returns zipped archive (special handling). User Profile API returns wrapped response (userData object). Write APIs return success codes.",
+    "capabilities": {
+      "read": true,
+      "write": true,
+      "update": true,
+      "delete": false,
+      "batch_operations": true,
+      "pagination": "none"
+    }
+  }
+}
