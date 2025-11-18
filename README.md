@@ -2,7 +2,7 @@
 
 Production-ready Python driver for exporting event data from Amplitude Analytics into Keboola Storage.
 
-**Built on [Prometheus Driver System](https://www.keboola.com/) - High-performance agentic Python driver compiler. Agents are generating fast and reliable Python code.**
+**Built on [Prometheus Driver System](https://www.keboola.com/) - High-performance agentic Python driver compiler. Agentic system for fast and reliable Python drivers.**
 
 ---
 
