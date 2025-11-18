@@ -25,104 +25,37 @@ You'll find:
 
 ![Amplitude Project Settings](public/amplitude.png)
 
-### 2. (Optional) Local Testing - Environment Variables
-
-For local development, create `.env` file (not committed to git):
-```bash
-AMPLITUDE_API_KEY=your_api_key_here
-AMPLITUDE_SECRET_KEY=your_secret_key_here
-AMPLITUDE_REGION=us  # or eu
-```
-
-### 3. Install Dependencies
-
-```bash
-uv pip install -e .
-```
 
 ## Usage
 
-### Keboola Custom Python Component
+### Keboola Configuration
 
-Configure in Keboola UI with Git repository settings:
+1. **Create Custom Python Component** in Keboola
+2. **Set Git Repository:**
+   - URL: `https://github.com/padak/keboola_amplitude.git`
+   - Branch: `main`
+   - Filename: `main.py`
 
-**Git Configuration:**
-- URL: `https://github.com/padak/keboola_amplitude.git`
-- Branch: `main`
-- Filename: `main.py`
+3. **Set User Parameters:**
+   ```json
+   {
+     "#AMPLITUDE_API_KEY": "your_encrypted_api_key",
+     "#AMPLITUDE_SECRET_KEY": "your_encrypted_secret_key",
+     "amplitude_region": "us",
+     "start_date": "20251112T00",
+     "end_date": "20251117T23"
+   }
+   ```
+   > Parameters with `#` are encrypted by Keboola automatically
 
-**User Parameters:**
+4. **Set Output Mapping:**
+   - File: `events.csv` → Table: `out.c-amplitude.events`
 
-In Keboola configuration, set these user parameters:
+5. **Run** the component
 
-```json
-{
-  "#AMPLITUDE_API_KEY": "KBC::ProjectSecure::[your_encrypted_api_key]",
-  "#AMPLITUDE_SECRET_KEY": "KBC::ProjectSecure::[your_encrypted_secret_key]",
-  "amplitude_region": "us",
-  "start_date": "20251112T00",
-  "end_date": "20251117T23"
-}
-```
+## Important Notes
 
-> **Note**: Parameters starting with `#` are encrypted by Keboola and secure to use. Copy your API credentials from Amplitude project settings and paste them in the Keboola UI - Keboola will encrypt them automatically.
-
-**Output Mapping:**
-- **File**: `events.csv`
-- **Source**: `out/tables/events.csv`
-- **Destination**: `out.c-amplitude.events` (or choose your own table)
-
-### Local Testing
-
-```bash
-# Export test data
-python scripts/export_nov_12_data.py
-
-# Generate sample data to Amplitude
-python scripts/generate_sample_data.py
-```
-
-## Project Structure
-
-```
-.
-├── amplitude_driver/          # Main driver package
-│   ├── client.py             # Amplitude API client
-│   ├── exceptions.py         # Custom exceptions
-│   ├── __init__.py           # Package exports
-│   └── tests/                # Test suite
-├── main.py                   # Keboola entry point
-├── scripts/                  # Development utilities
-│   ├── generate_sample_data.py
-│   └── export_nov_12_data.py
-├── docs/                     # Documentation
-├── pyproject.toml            # Project configuration
-└── uv.lock                   # Dependency lock file
-```
-
-## API Reference
-
-### AmplitudeDriver
-
-```python
-from amplitude_driver import AmplitudeDriver
-
-# Initialize from environment
-client = AmplitudeDriver.from_env()
-
-# Export events
-events = client.read_events_export(
-    start='20251112T00',
-    end='20251117T23'
-)
-
-# Get event schema
-schema = client.get_event_schema()
-```
-
-## Data Retention
-
-⚠️ **Important**: Amplitude stores raw event data for ~3-7 days. For older data, use Amplitude's other APIs or export regularly and store in Keboola.
+⚠️ **Data Retention**: Amplitude stores raw event data for ~3-7 days only. Export regularly to avoid losing data.
 
 ## License
 
