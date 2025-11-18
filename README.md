@@ -25,9 +25,9 @@ You'll find:
 
 ![Amplitude Project Settings](public/amplitude.png)
 
-### 2. Environment Variables
+### 2. (Optional) Local Testing - Environment Variables
 
-Create `.env` file (not committed to git):
+For local development, create `.env` file (not committed to git):
 ```bash
 AMPLITUDE_API_KEY=your_api_key_here
 AMPLITUDE_SECRET_KEY=your_secret_key_here
@@ -37,41 +37,40 @@ AMPLITUDE_REGION=us  # or eu
 ### 3. Install Dependencies
 
 ```bash
-uv pip install -r pyproject.toml
+uv pip install -e .
 ```
 
 ## Usage
 
 ### Keboola Custom Python Component
 
-Configure in Keboola UI:
+Configure in Keboola UI with Git repository settings:
+
+**Git Configuration:**
+- URL: `https://github.com/padak/keboola_amplitude.git`
+- Branch: `main`
+- Filename: `main.py`
+
+**User Parameters:**
+
+In Keboola configuration, set these user parameters:
 
 ```json
 {
-  "parameters": {
-    "source": "git",
-    "venv": "3.13",
-    "git": {
-      "url": "https://github.com/padak/keboola_amplitude.git",
-      "branch": "main",
-      "filename": "main.py",
-      "auth": "none"
-    },
-    "user_properties": {
-      "#amplitude_api_key": "your_encrypted_key",
-      "#amplitude_secret_key": "your_encrypted_secret",
-      "amplitude_region": "us",
-      "start_date": "20251112T00",
-      "end_date": "20251117T23"
-    }
-  }
+  "#AMPLITUDE_API_KEY": "KBC::ProjectSecure::[your_encrypted_api_key]",
+  "#AMPLITUDE_SECRET_KEY": "KBC::ProjectSecure::[your_encrypted_secret_key]",
+  "amplitude_region": "us",
+  "start_date": "20251112T00",
+  "end_date": "20251117T23"
 }
 ```
 
-Output mapping:
+> **Note**: Parameters starting with `#` are encrypted by Keboola and secure to use. Copy your API credentials from Amplitude project settings and paste them in the Keboola UI - Keboola will encrypt them automatically.
+
+**Output Mapping:**
 - **File**: `events.csv`
 - **Source**: `out/tables/events.csv`
-- **Destination**: `out.c-amplitude.events`
+- **Destination**: `out.c-amplitude.events` (or choose your own table)
 
 ### Local Testing
 
