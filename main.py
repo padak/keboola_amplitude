@@ -19,6 +19,8 @@ State file tracks:
 import logging
 import csv
 import os
+import json
+import time
 from datetime import datetime
 
 try:
@@ -177,6 +179,130 @@ def update_state(ci, end_date, event_count):
     logger.info(f"✓ State updated: {event_count} events exported, next run from {end_date}")
 
 
+def write_user_properties_from_table(ci, amplitude_api_key):
+    """
+    Read user properties from Keboola input table and write to Amplitude
+
+    Args:
+        ci: CommonInterface instance
+        amplitude_api_key: Amplitude API key
+
+    Returns:
+        Number of user properties updated
+    """
+    logger.info("Starting user properties write to Amplitude")
+
+    # Get configuration
+    parameters = ci.configuration.parameters
+    user_id_column = parameters.get('user_id_column', 'user_id')
+    property_columns = parameters.get('property_columns', {})
+
+    if not property_columns:
+        logger.warning("No property_columns configured, skipping write")
+        return 0
+
+    # Get input tables
+    input_tables = ci.get_input_tables_definitions()
+    if not input_tables:
+        logger.warning("No input tables found, skipping write")
+        return 0
+
+    # Use first input table
+    input_table = input_tables[0]
+    logger.info(f"Reading from input table: {input_table.name}")
+
+    # Initialize Amplitude driver
+    try:
+        driver = AmplitudeDriver(api_key=amplitude_api_key)
+        logger.info("✓ Amplitude driver initialized for write")
+    except Exception as e:
+        logger.error(f"Failed to initialize driver: {e}")
+        raise
+
+    # Read input CSV and prepare user property updates
+    identifications = []
+    row_count = 0
+
+    try:
+        with open(input_table.full_path, 'r', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+
+            for row in reader:
+                row_count += 1
+                user_id = row.get(user_id_column)
+
+                if not user_id:
+                    logger.warning(f"Row {row_count}: Missing user_id_column '{user_id_column}', skipping")
+                    continue
+
+                # Build user properties from configured columns
+                user_properties = {}
+                for source_col, target_prop in property_columns.items():
+                    value = row.get(source_col)
+                    if value is not None:
+                        # Try to parse JSON if it looks like JSON
+                        if isinstance(value, str) and (value.startswith('{') or value.startswith('[')):
+                            try:
+                                user_properties[target_prop] = json.loads(value)
+                            except json.JSONDecodeError:
+                                user_properties[target_prop] = value
+                        else:
+                            # Convert numeric strings if possible
+                            if isinstance(value, str):
+                                try:
+                                    # Try float first (covers both int and float)
+                                    if '.' in value:
+                                        user_properties[target_prop] = float(value)
+                                    else:
+                                        user_properties[target_prop] = int(value)
+                                except ValueError:
+                                    user_properties[target_prop] = value
+                            else:
+                                user_properties[target_prop] = value
+
+                # Create identification object
+                identification = {
+                    "user_id": user_id,
+                    "user_properties": {
+                        "$set": user_properties
+                    }
+                }
+
+                identifications.append(identification)
+
+                # Send in batches of 2000 (Amplitude limit)
+                if len(identifications) >= 2000:
+                    logger.info(f"Sending batch of {len(identifications)} user properties to Amplitude...")
+                    try:
+                        result = driver.update_user_properties(identifications)
+                        logger.info(f"✓ Batch successful: {result}")
+                    except Exception as e:
+                        logger.error(f"✗ Batch failed: {e}")
+                        # Continue with next batch
+
+                    identifications = []
+                    time.sleep(0.5)  # Small delay between batches
+
+        # Send remaining identifications
+        if identifications:
+            logger.info(f"Sending final batch of {len(identifications)} user properties to Amplitude...")
+            try:
+                result = driver.update_user_properties(identifications)
+                logger.info(f"✓ Final batch successful: {result}")
+            except Exception as e:
+                logger.error(f"✗ Final batch failed: {e}")
+
+        logger.info(f"✓ Processed {row_count} rows from input table")
+
+    except Exception as e:
+        logger.error(f"Failed to read input table: {e}")
+        raise
+    finally:
+        driver.close()
+
+    return row_count
+
+
 def main():
     """Main entry point for Keboola component"""
     try:
@@ -187,41 +313,74 @@ def main():
         # Get configuration
         parameters = ci.configuration.parameters
 
-        # Get required parameters
-        required_params = ['#AMPLITUDE_API_KEY', '#AMPLITUDE_SECRET_KEY', 'start_date', 'end_date']
-        try:
-            ci.validate_configuration_parameters(required_params)
-        except ValueError as e:
-            logger.error(f"Configuration validation failed: {e}")
-            raise
+        # Determine mode: read, write, or both
+        read_enabled = 'start_date' in parameters and 'end_date' in parameters
+        write_enabled = len(ci.get_input_tables_definitions()) > 0 and 'property_columns' in parameters
 
-        # Extract configuration
+        if not read_enabled and not write_enabled:
+            logger.error("No valid configuration found. Set start_date/end_date for read mode or input table with property_columns for write mode.")
+            raise ValueError("Invalid configuration")
+
         api_key = parameters.get('#AMPLITUDE_API_KEY')
-        secret_key = parameters.get('#AMPLITUDE_SECRET_KEY')
-        start_date = parameters.get('start_date')
-        end_date = parameters.get('end_date')
-        output_table = parameters.get('output_table', 'out.c-amplitude.events')
+        if not api_key:
+            logger.error("Missing required parameter: #AMPLITUDE_API_KEY")
+            raise ValueError("Missing #AMPLITUDE_API_KEY")
 
-        logger.info(f"Configuration loaded:")
-        logger.info(f"  - Start date: {start_date}")
-        logger.info(f"  - End date: {end_date}")
-        logger.info(f"  - Output table: {output_table}")
+        # READ MODE: Export events from Amplitude
+        event_count = 0
+        if read_enabled:
+            logger.info("READ MODE: Exporting events from Amplitude")
 
-        # Export events
-        event_count = export_amplitude_events(
-            ci,
-            api_key,
-            secret_key,
-            start_date,
-            end_date,
-            output_table
-        )
+            # Get required parameters for read
+            required_params = ['#AMPLITUDE_SECRET_KEY', 'start_date', 'end_date']
+            try:
+                ci.validate_configuration_parameters(required_params)
+            except ValueError as e:
+                logger.error(f"Configuration validation failed for read mode: {e}")
+                raise
 
-        # Update state for incremental runs
-        update_state(ci, end_date, event_count)
+            # Extract read configuration
+            secret_key = parameters.get('#AMPLITUDE_SECRET_KEY')
+            start_date = parameters.get('start_date')
+            end_date = parameters.get('end_date')
+            output_table = parameters.get('output_table', 'out.c-amplitude.events')
+
+            logger.info(f"Configuration loaded:")
+            logger.info(f"  - Start date: {start_date}")
+            logger.info(f"  - End date: {end_date}")
+            logger.info(f"  - Output table: {output_table}")
+
+            # Export events
+            event_count = export_amplitude_events(
+                ci,
+                api_key,
+                secret_key,
+                start_date,
+                end_date,
+                output_table
+            )
+
+            # Update state for incremental runs
+            update_state(ci, end_date, event_count)
+            logger.info(f"✓ Exported {event_count} events from Amplitude")
+
+        # WRITE MODE: Update user properties in Amplitude
+        write_count = 0
+        if write_enabled:
+            logger.info("WRITE MODE: Updating user properties in Amplitude")
+
+            logger.info(f"Configuration loaded:")
+            logger.info(f"  - User ID column: {parameters.get('user_id_column', 'user_id')}")
+            logger.info(f"  - Property columns: {parameters.get('property_columns', {})}")
+
+            write_count = write_user_properties_from_table(ci, api_key)
+            logger.info(f"✓ Updated {write_count} user properties in Amplitude")
 
         logger.info(f"✓ Component execution completed successfully")
-        logger.info(f"✓ Exported {event_count} events from Amplitude")
+        if read_enabled:
+            logger.info(f"  - Read: {event_count} events exported")
+        if write_enabled:
+            logger.info(f"  - Write: {write_count} user properties updated")
 
         return 0
 
