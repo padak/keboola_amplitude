@@ -23,6 +23,8 @@ You'll find:
 - **API Key** - Used for reading data
 - **Secret Key** - Required for Export API
 
+![Amplitude Project Settings](public/amplitude.png)
+
 ### 2. Environment Variables
 
 Create `.env` file (not committed to git):
