@@ -8,7 +8,7 @@ Production-ready Python driver for exporting event data from Amplitude Analytics
 - **Automatic Compression Handling** - Handles gzip-compressed responses
 - **Flexible Authentication** - API key and/or secret key support
 - **Keboola Integration** - Custom Python component ready for deployment
-- **Comprehensive Tests** - Full test suite included
+- **Unit Tests** - Test suite for driver validation
 
 ## Setup
 
