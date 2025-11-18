@@ -1,6 +1,14 @@
-# Amplitude Analytics Driver for Keboola
+# Amplitude Connector: Built on Prometheus Driver System (Keboola)
 
 Production-ready Python driver for exporting event data from Amplitude Analytics into Keboola Storage.
+
+**Built on [Prometheus Driver System](https://prometheus.keboola.com/) - Enterprise-grade data connector framework by Keboola**
+
+---
+
+## License
+
+MIT License - See LICENSE file for details
 
 ## Features
 
@@ -61,10 +69,3 @@ You'll find:
 
 5. **Run** the component
 
-## Important Notes
-
-⚠️ **Data Retention**: Amplitude stores raw event data for ~3-7 days only. Export regularly to avoid losing data.
-
-## License
-
-MIT
